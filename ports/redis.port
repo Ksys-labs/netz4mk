@@ -1,0 +1,9 @@
+LICENSE   := BSD
+VERSION   := 3.0.0-rc1
+DOWNLOADS := redis.archive
+
+URL(redis) := https://github.com/antirez/redis/archive/$(VERSION).tar.gz
+SHA(redis)  := a79bf6c6d6646f631ea56b3874dad119fbb21806
+DIR(redis) := src/app/redis
+
+PATCHES := src/app/redis/*.patch

@@ -1,0 +1,72 @@
+diff -ua redis-3.0.0-rc1/src/ae.c src/app/redis/src/ae.c
+--- redis-3.0.0-rc1/src/ae.c	2014-10-09 13:06:02.000000000 +0400
++++ src/app/redis/src/ae.c	2015-02-21 16:07:47.072271786 +0300
+@@ -35,7 +35,7 @@
+ #include <sys/types.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+-#include <poll.h>
++#include <sys/poll.h>
+ #include <string.h>
+ #include <time.h>
+ #include <errno.h>
+@@ -421,7 +421,6 @@
+     /* Check time events */
+     if (flags & AE_TIME_EVENTS)
+         processed += processTimeEvents(eventLoop);
+-
+     return processed; /* return the number of processed file/time events */
+ }
+ 
+diff -ua redis-3.0.0-rc1/src/anet.c src/app/redis/src/anet.c
+--- redis-3.0.0-rc1/src/anet.c	2014-10-09 13:06:02.000000000 +0400
++++ src/app/redis/src/anet.c	2015-01-11 03:38:44.698429083 +0300
+@@ -126,6 +127,7 @@
+ 
+ static int anetSetTcpNoDelay(char *err, int fd, int val)
+ {
++    return ANET_OK;//FIXME
+     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == -1)
+     {
+         anetSetError(err, "setsockopt TCP_NODELAY: %s", strerror(errno));
+diff -ua redis-3.0.0-rc1/src/config.h src/app/redis/src/config.h
+--- redis-3.0.0-rc1/src/config.h	2014-10-09 13:06:02.000000000 +0400
++++ src/app/redis/src/config.h	2015-02-21 16:13:30.057054933 +0300
+@@ -66,7 +66,7 @@
+ #endif
+ 
+ #if (defined(__APPLE__) && defined(MAC_OS_X_VERSION_10_6)) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined (__NetBSD__)
+-#define HAVE_KQUEUE 1
++//#define HAVE_KQUEUE 1
+ #endif
+ 
+ #ifdef __sun
+diff -ua redis-3.0.0-rc1/src/networking.c src/app/redis/src/networking.c
+--- redis-3.0.0-rc1/src/networking.c	2014-10-09 13:06:02.000000000 +0400
++++ src/app/redis/src/networking.c	2015-02-21 16:06:17.552799287 +0300
+@@ -588,7 +588,7 @@
+     REDIS_NOTUSED(el);
+     REDIS_NOTUSED(mask);
+     REDIS_NOTUSED(privdata);
+-
++    max=1;//FIXME
+     while(max--) {
+         cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
+         if (cfd == ANET_ERR) {
+diff -ua redis-3.0.0-rc1/src/redis.c src/app/redis/src/redis.c
+--- redis-3.0.0-rc1/src/redis.c	2014-10-09 13:06:02.000000000 +0400
++++ src/app/redis/src/redis.c	2015-02-21 10:46:03.130202995 +0300
+@@ -3593,10 +3593,11 @@
+     } else {
+         redisLog(REDIS_WARNING, "Warning: no config file specified, using the default config. In order to specify a config file use %s /path/to/%s.conf", argv[0], server.sentinel_mode ? "sentinel" : "redis");
+     }
++
+     if (server.daemonize) daemonize();
+     initServer();
+     if (server.daemonize) createPidFile();
+-    redisSetProcTitle(argv[0]);
++//    redisSetProcTitle(argv[0]); FIXME
+     redisAsciiArt();
+ 
+     if (!server.sentinel_mode) {
+Only in src/app/redis/src: release.h

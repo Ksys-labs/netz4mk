@@ -1,0 +1,28 @@
+diff -rua redis-3.0.0-rc1/deps/hiredis/net.c src/app/redis/deps/hiredis/net.c
+--- redis-3.0.0-rc1/deps/hiredis/net.c	2014-10-09 13:06:02.000000000 +0400
++++ src/app/redis/deps/hiredis/net.c	2015-01-10 19:47:26.126678032 +0300
+@@ -45,7 +45,7 @@
+ #include <errno.h>
+ #include <stdarg.h>
+ #include <stdio.h>
+-#include <poll.h>
++#include <sys/poll.h>
+ #include <limits.h>
+ 
+ #include "net.h"
+@@ -139,6 +139,7 @@
+     }
+ #else
+ #ifndef __sun
++#if 0 //FIXME
+     val = interval;
+     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
+         __redisSetError(c,REDIS_ERR_OTHER,strerror(errno));
+@@ -159,6 +160,7 @@
+     }
+ #endif
+ #endif
++#endif
+ 
+     return REDIS_OK;
+ }
