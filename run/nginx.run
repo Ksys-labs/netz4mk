@@ -1,0 +1,153 @@
+#
+# \brief  nginx run script
+# \author Vasily A. Sartakov
+# \date   20.02.2015
+#
+
+set use_ram	1
+
+set build_components {
+	core init
+	drivers/timer
+	drivers/nic
+	drivers/pci
+	app/nginx
+}
+
+set network_driver "nic_drv" 
+
+lappend_if [have_spec acpi]     build_components drivers/acpi
+lappend_if [have_spec pci]      build_components drivers/pci/device_pd
+
+lappend_if $use_ram		build_components server/ram_blk
+lappend_if $use_ram		build_components server/rump_fs
+
+build $build_components
+
+create_boot_directory
+
+append config {
+<config verbose="yes">
+	<parent-provides>
+		<service name="ROM"/>
+		<service name="LOG"/>
+		<service name="CAP"/>
+		<service name="RAM"/>
+		<service name="RM"/>
+		<service name="CPU"/>
+		<service name="PD"/>
+		<service name="IRQ"/>
+		<service name="IO_PORT"/>
+		<service name="IO_MEM"/>
+		<service name="SIGNAL"/>
+	</parent-provides>
+	<default-route>
+		<any-service> <parent/> <any-child/> </any-service>
+	</default-route>
+	<start name="timer">
+		<resource name="RAM" quantum="1M"/>
+		<provides><service name="Timer"/></provides>
+		<route>
+			<service name="IRQ"><child name="acpi" /></service>
+			<any-service> <parent /> <any-child /></any-service>
+		</route>
+	</start>
+	<start name="rtc_drv">
+		<resource name="RAM" quantum="1M"/>
+		<provides>
+			<service name="Rtc"/>
+		</provides>
+	</start>}
+
+append_if [expr $use_ram] config {
+	<start name="ram_blk">
+		<resource name="RAM" quantum="60M"/>
+		<provides><service name="Block"/></provides>
+		<config file="ext2.raw" block_size="512"/>
+	</start>
+	<start name="rump_fs">
+		<resource name="RAM" quantum="8M" />
+		<provides><service name="File_system"/></provides>
+		<config fs="ext2fs"><policy label="" root="/" writeable="yes"/></config>
+	</start>}
+
+append_if [have_spec acpi] config {
+	<start name="acpi">
+		<resource name="RAM" quantum="12M"/>
+		<binary name="acpi_drv"/>
+		<provides>
+			<service name="PCI"/>
+			<service name="IRQ" />
+		</provides>
+		<route>
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+	</start>}
+
+append config {
+	<start name="nic_drv">
+		<resource name="RAM" quantum="32M"/>
+		<provides><service name="Nic"/></provides>
+		<route> 
+			<service name="IRQ"><child name="acpi" /></service>
+			<any-service> <parent /> <any-child /></any-service>
+		</route>
+	</start>}
+
+append config {
+	<start name="nginx">
+		<resource name="RAM" quantum="1G" />
+		<config>
+			<arg value="nginx" />
+			<libc tx_buf_size="220M" rx_buf_size="220M" stdout="/dev/log" stderr="/dev/log" rtc="/dev/rtc">
+				<vfs>
+					<dir name="dev"> <log/> <rtc/> </dir>
+					<fs/>
+				</vfs>
+			</libc>
+		</config>
+		<route>
+			<service name="Rtc"> <any-child /> </service>
+			<any-service> <parent/> <any-child /> </any-service>
+		</route>
+		</start>
+</config>
+}
+
+install_config $config
+
+#
+# Boot modules
+#
+
+# generic modules
+set boot_modules {
+	core init timer rtc_drv ld.lib.so
+	libc.lib.so libm.lib.so  pthread.lib.so
+	lxip.lib.so libc_resolv.lib.so 
+	libcrypto.lib.so libssl.lib.so pcre.lib.so zlib.lib.so readline.lib.so
+	nginx
+	nic_drv
+}
+
+# platform-specific modules
+lappend_if [have_spec acpi]          boot_modules acpi_drv
+lappend_if [have_spec pci]           boot_modules pci_drv
+lappend_if [have_spec nova]          boot_modules pci_device_pd
+
+lappend_if $use_ram          	boot_modules 	ext2.raw
+lappend_if $use_ram          	boot_modules	rump.lib.so
+lappend_if $use_ram          	boot_modules	rump_fs.lib.so 
+lappend_if $use_ram          	boot_modules	ram_blk
+lappend_if $use_ram          	boot_modules	rump_fs
+
+
+build_boot_image $boot_modules
+
+append_if [have_spec x86]     qemu_args " -net nic,model=e1000 "
+append_if [have_spec lan9118] qemu_args " -net nic,model=lan9118 "
+
+append qemu_args " -m 768 -net user -redir tcp:6379::6379 -redir tcp:8080::80"
+append qemu_args " -nographic -serial mon:stdio "
+
+run_genode_until forever
