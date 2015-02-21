@@ -1,0 +1,95 @@
+diff -uar nginx-1.4.7/src/core/nginx.c src/app/nginx/src/core/nginx.c
+--- nginx-1.4.7/src/core/nginx.c	2014-03-18 17:17:10.000000000 +0400
++++ src/app/nginx/src/core/nginx.c	2015-02-20 19:12:01.623166744 +0300
+@@ -363,7 +363,9 @@
+         ngx_process = NGX_PROCESS_MASTER;
+     }
+ 
+-#if !(NGX_WIN32)
++    ngx_process = NGX_PROCESS_SINGLE; //FIXME
++
++#if 0 //FIXME #if !(NGX_WIN32)
+ 
+     if (ngx_init_signals(cycle->log) != NGX_OK) {
+         return 1;
+@@ -1032,8 +1034,7 @@
+     ngx_memcpy(ngx_cpymem(ccf->oldpid.data, ccf->pid.data, ccf->pid.len),
+                NGX_OLDPID_EXT, sizeof(NGX_OLDPID_EXT));
+ 
+-
+-#if !(NGX_WIN32)
++#if 0 //FIXME #if !(NGX_WIN32)
+ 
+     if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
+         struct group   *grp;
+diff -uar nginx-1.4.7/src/core/ngx_log.c src/app/nginx/src/core/ngx_log.c
+--- nginx-1.4.7/src/core/ngx_log.c	2014-03-18 17:17:10.000000000 +0400
++++ src/app/nginx/src/core/ngx_log.c	2015-02-20 19:24:12.142009585 +0300
+@@ -97,8 +97,10 @@
+ 
+     last = errstr + NGX_MAX_ERROR_STR;
+ 
++#if 0 //FIXME
+     ngx_memcpy(errstr, ngx_cached_err_log_time.data,
+                ngx_cached_err_log_time.len);
++#endif
+ 
+     p = errstr + ngx_cached_err_log_time.len;
+ 
+@@ -146,7 +148,7 @@
+         || level > NGX_LOG_WARN
+         || log->file->fd == ngx_stderr)
+     {
+-        return;
++//        return; FIXME
+     }
+ 
+     msg -= (7 + err_levels[level].len + 3);
+Only in src/app/nginx/src/core: ngx_process.c
+diff -uar nginx-1.4.7/src/event/ngx_event.c src/app/nginx/src/event/ngx_event.c
+--- nginx-1.4.7/src/event/ngx_event.c	2014-03-18 17:17:10.000000000 +0400
++++ src/app/nginx/src/event/ngx_event.c	2015-02-20 19:30:44.000000000 +0300
+@@ -638,7 +638,12 @@
+             continue;
+         }
+ 
++#if 1 //FIXME
++extern ngx_event_module_t  ngx_select_module_ctx;
++module = &ngx_select_module_ctx;
++#else
+         module = ngx_modules[m]->ctx;
++#endif
+ 
+         if (module->actions.init(cycle, ngx_timer_resolution) != NGX_OK) {
+             /* fatal */
+diff -uar nginx-1.4.7/src/os/unix/ngx_channel.c src/app/nginx/src/os/unix/ngx_channel.c
+--- nginx-1.4.7/src/os/unix/ngx_channel.c	2014-03-18 17:17:10.000000000 +0400
++++ src/app/nginx/src/os/unix/ngx_channel.c	2015-02-20 16:49:49.332533782 +0300
+@@ -74,7 +74,11 @@
+     msg.msg_iov = iov;
+     msg.msg_iovlen = 1;
+ 
++#if 0 //FIXME
+     n = sendmsg(s, &msg, 0);
++#else
++    n = -1;
++#endif
+ 
+     if (n == -1) {
+         err = ngx_errno;
+diff -uar nginx-1.4.7/src/os/unix/ngx_process_cycle.c src/app/nginx/src/os/unix/ngx_process_cycle.c
+--- nginx-1.4.7/src/os/unix/ngx_process_cycle.c	2014-03-18 17:17:11.000000000 +0400
++++ src/app/nginx/src/os/unix/ngx_process_cycle.c	2015-02-20 19:28:45.686655616 +0300
+@@ -295,10 +295,12 @@
+ {
+     ngx_uint_t  i;
+ 
++#if 0 //FIXME
+     if (ngx_set_environment(cycle, NULL) == NULL) {
+         /* fatal */
+         exit(2);
+     }
++#endif
+ 
+     for (i = 0; ngx_modules[i]; i++) {
+         if (ngx_modules[i]->init_process) {
